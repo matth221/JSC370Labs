@@ -161,7 +161,19 @@ Knit the doc and save it on GitHub.
 For each state, identify what is the station that is closest to the mid-point of the state. Combining these with the stations you identified in the previous question, use `leaflet()` to visualize all \~100 points in the same figure, applying different colors for those identified in this question.
 
 ```{r}
+mid_point <- met[, .(lon_50 = quantile(lon, probs = .5, na.rm = T),
+                     lat_50 = quantile(lat, probs = .5, na.rm = T)), by = STATE]
+mid <- merge(x = met, y = mid_point, by = "STATE")
 
+
+mid[, mid_eudist := sqrt((lon - lon_50)^2 + (lat - lat_50)^2)]
+mid_station <- mid[, .SD[which.min(mid_eudist)], by = STATE]
+
+library(leaflet)
+library(dplyr)
+leaflet() %>%
+  addProviderTiles('CartoDB.Positron') %>%
+  addCircles(data = mid_station, lat = ~lat, lng = ~lon, popup = "mid station", opacity = 1, fillOpacity = 1, radius = 400, color = "blue")
 ```
 
 Knit the doc and save it on GitHub.
@@ -213,5 +225,7 @@ Let's practice running regression models with smooth functions on X. We need the
 -   Answer questions 1-5
 
 -   Paste the link to the github repo you created here
+
+https://github.com/matth221/JSC370Labs
 
 -   Submit pdf or html output to Quercus
