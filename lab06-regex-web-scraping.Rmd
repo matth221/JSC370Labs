@@ -98,10 +98,12 @@ following lines of code:
 ids <- as.character(ids)
 
 # Find all the ids 
-ids <- stringr::str_extract_all(ids, "<Id>[0-9]+</Id>")[[1]]
+ids <- unlist(stringr::str_extract_all(ids, "<Id>[0-9]+</Id>"))
 
 # Remove all the leading and trailing <Id> </Id>. Make use of "|"
 ids <- stringr::str_remove_all(ids, "<Id>|</Id>")
+
+ids <- head(ids, 300)
 ```
 
 With the ids in hand, we can now try to get the abstracts of the papers. As
@@ -128,6 +130,8 @@ publications <- GET(
     )
 )
 
+publications
+
 # Turning the output into character vector
 publications <- httr::content(publications)
 publications_txt <- as.character(publications)
@@ -145,9 +149,9 @@ Using the function `stringr::str_extract_all()` applied on `publications_txt`, c
 Write a regular expression that captures all such instances
 
 ```{r univ-institute-regex, eval = TRUE}
-institution <- str_extract_all(
+institution <- stringr::str_extract_all(
   publications_txt,
-  "[YOUR REGULAR EXPRESSION HERE]"
+  "[[:alpha:]]+\\s+Institute\\s+of\\s+[[:alpha:]]+ | University\\s+of\\s+[[:alpha:]]+"
   ) 
 institution <- unlist(institution)
 table(institution)
@@ -161,10 +165,11 @@ Repeat the exercise and this time focus on schools and departments in the form o
 And tabulate the results
 
 ```{r school-department, eval = TRUE}
-schools_and_deps <- str_extract_all(
-  abstracts_txt,
-  "[YOUR REGULAR EXPRESSION HERE]"
+schools_and_deps <- stringr::str_extract_all(
+  publications_txt,
+  "School\\s+of\\s+[[:alpha:]]+ | Department\\s+of\\s+[[:alpha:]]+"
   )
+schools_and_deps <- unlist(schools_and_deps)
 table(schools_and_deps)
 ```
 
@@ -189,16 +194,20 @@ Now, extract the abstract and article title for each one of the elements of
 take advantage of vectorization of `stringr::str_extract`
 
 ```{r extracting-last-bit, eval = TRUE}
-abstracts <- str_extract(pub_char_list, "[YOUR REGULAR EXPRESSION]")
-abstracts <- str_remove_all(abstracts, "[CLEAN ALL THE HTML TAGS]")
-abstracts <- str_remove_all(abstracts, "[CLEAN ALL EXTRA WHITE SPACE AND NEW LINES]")
+library(stringr)
+abstracts <- str_extract(pub_char_list, "<Abstract>(\\n|.)+ </Abstract>")
+abstracts <- str_remove_all(abstracts, "</?[[:alnum:]]+>")
+abstracts <- str_replace_all(abstracts, "\\s+", " ")
+table(is.na(abstracts))
 ```
 
 How many of these don't have an abstract? Now, the title
 
 ```{r process-titles, eval = TRUE}
-titles <- str_extract(pub_char_list, "[YOUR REGULAR EXPRESSION]")
-titles <- str_remove_all(titles, "[CLEAN ALL THE HTML TAGS]")
+titles <- str_extract(pub_char_list, "<ArticleTitle>(\\n|.)+</ArticleTitle>")
+titles <- str_remove_all(titles, "</?[[:alnum:]]+>")
+titles <- str_replace_all(titles, "\\s+", " ")
+table(is.na(titles))
 ```
 
 Finally, put everything together into a single `data.frame` and use
@@ -206,7 +215,9 @@ Finally, put everything together into a single `data.frame` and use
 
 ```{r build-db, eval = TRUE}
 database <- data.frame(
-  "[DATA TO CONCATENATE]"
+  PubMedId = ids,
+  Title = titles,
+  Abstract = abstracts
 )
 knitr::kable(database)
 ```
